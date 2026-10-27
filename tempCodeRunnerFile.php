@@ -1,0 +1,2 @@
+<?php
+' PARITY=N DATA=8 STOP=1 XON=OFF';
