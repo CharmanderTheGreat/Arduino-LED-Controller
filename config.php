@@ -1,5 +1,5 @@
 <?php
-define('ARDUINO_PORT', 'COM5');
+define('ARDUINO_PORT', 'COM3');
 define('ARDUINO_BAUD', 9600);
 
 function configureArduinoSerial(): array
