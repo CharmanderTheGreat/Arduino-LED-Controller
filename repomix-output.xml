@@ -1,0 +1,457 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.gitignore
+arduino_led_controller.ino
+config.php
+index.php
+README.md
+tempCodeRunnerFile.php
+test_com_port.php
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".gitignore">
+led_state.txt
+</file>
+
+<file path="arduino_led_controller.ino">
+/*
+  PHP -> USB Serial -> Arduino LED Controller
+
+  Commands:
+    1 = LED ON
+    0 = LED OFF
+
+  Built-in LED: Arduino Uno pin 13.
+*/
+
+const int LED_PIN = 13;
+
+void setup()
+{
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
+  Serial.begin(9600);
+  delay(500);
+
+  Serial.println("READY");
+}
+
+void loop()
+{
+  if (Serial.available() > 0)
+  {
+    char command = Serial.read();
+
+    if (command == '1')
+    {
+      digitalWrite(LED_PIN, HIGH);
+      Serial.println("LED ON");
+    }
+    else if (command == '0')
+    {
+      digitalWrite(LED_PIN, LOW);
+      Serial.println("LED OFF");
+    }
+  }
+}
+</file>
+
+<file path="README.md">
+# Arduino LED Controller
+
+Control an Arduino's LED from a web page. A PHP page running on XAMPP sends commands over USB serial to an Arduino Uno. One toggle button turns the LED on or off.
+
+## Tech Stack
+
+| Layer       | Technology                       | Role                                         |
+| ----------- | -------------------------------- | -------------------------------------------- |
+| Frontend    | HTML, CSS, vanilla JS            | Single toggle button (green = ON, red = OFF) |
+| Backend     | PHP 8+ on Apache (XAMPP)         | Handles toggle logic, talks to the COM port  |
+| Serial link | Windows `mode` command + `fopen` | Configures and writes to `\\.\COMx`          |
+| Firmware    | Arduino C++ (`.ino`)             | Reads `1`/`0` over serial, drives pin 13     |
+| Hardware    | Arduino Uno, USB cable           | Built-in LED on pin 13 (or external LED)     |
+
+**How it flows:**
+
+Browser → Apache/PHP → Windows COM port → USB → Arduino → LED
+
+## Project Structure
+
+| File                         | Purpose                                               |
+| ---------------------------- | ----------------------------------------------------- |
+| `index.php`                  | Web UI and toggle logic                               |
+| `config.php`                 | COM port settings and serial helper functions         |
+| `test_com_port.php`          | Diagnostic page to check if PHP can open the COM port |
+| `arduino_led_controller.ino` | Arduino sketch                                        |
+| `led_state.txt`              | Auto-generated; stores the current LED state          |
+
+## Setup
+
+1. Put this folder in `C:\xampp\htdocs\arduino_php_led`.
+2. Open `config.php` and set your Arduino's port:
+
+   ```php
+   define('ARDUINO_PORT', 'COM5');
+   ```
+
+3. Upload `arduino_led_controller.ino` to the Arduino using the Arduino IDE.
+4. Close the Arduino Serial Monitor (it locks the port).
+5. Start Apache in XAMPP.
+6. Open <http://localhost/arduino_php_led/>.
+
+## Usage
+
+- Click the button to toggle the LED.
+- **Green** = LED is ON. **Red** = LED is OFF.
+- The status message below the button tells you if the command was sent or failed.
+
+## Troubleshooting
+
+Open <http://localhost/arduino_php_led/test_com_port.php>. A good result looks like:
+
+```
+RESULT: PHP successfully opened COM5.
+The COM port is accessible by PHP.
+```
+
+If the port opens but the LED does not respond, check that the sketch is uploaded and the Serial Monitor is closed.
+
+If the button color does not match the actual LED (for example after replugging the Arduino), click the button once to resync, or delete `led_state.txt`.
+
+## Serial Protocol
+
+| Command | Arduino action | Reply     |
+| ------- | -------------- | --------- |
+| `1`     | LED ON         | `LED ON`  |
+| `0`     | LED OFF        | `LED OFF` |
+
+Settings: 9600 baud, 8 data bits, no parity, 1 stop bit.
+
+## Wiring (external LED)
+
+```
+D13 -> 220/330 ohm resistor -> LED long leg (+)
+GND ------------------------------ LED short leg (-)
+```
+
+For the built-in LED, no wiring is needed.
+
+## Notes
+
+- Opening the serial port resets an Arduino Uno, so each click takes about 3 seconds.
+- The saved LED state resets to OFF whenever Apache is restarted (assumes the default `C:\xampp` install).
+- Windows only (uses the `mode` command).
+</file>
+
+<file path="tempCodeRunnerFile.php">
+<?php
+' PARITY=N DATA=8 STOP=1 XON=OFF';
+</file>
+
+<file path="test_com_port.php">
+<?php
+require_once __DIR__ . '/config.php';
+
+$port = strtoupper(trim(ARDUINO_PORT));
+$output = [];
+$exitCode = 0;
+
+$command = 'mode ' . $port .
+           ' BAUD=' . (int) ARDUINO_BAUD .
+           ' PARITY=N DATA=8 STOP=1 XON=OFF';
+
+exec($command . ' 2>&1', $output, $exitCode);
+
+// Correct Windows device path: \\.\COM6
+$device = '\\\\.\\' . $port;
+
+$handle = @fopen($device, 'w+b');
+$opened = ($handle !== false);
+
+if ($opened) {
+    fclose($handle);
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Arduino COM Port Test</title>
+<style>
+body{font-family:Arial;background:#f1f5f9;padding:30px}
+.box{max-width:850px;margin:auto;background:white;padding:25px;border-radius:12px}
+pre{background:#111827;color:#e5e7eb;padding:18px;border-radius:8px;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div class="box">
+<h2>Arduino COM Port Diagnostic</h2>
+<pre><?php
+echo "Configured port: $port\n";
+echo "MODE exit code: $exitCode\n";
+echo "MODE output:\n" . implode("\n", $output) . "\n\n";
+
+if ($opened) {
+    echo "RESULT: PHP successfully opened $port.\n";
+    echo "The COM port is accessible by PHP.\n";
+} else {
+    echo "RESULT: PHP could NOT open $port.\n";
+    echo "Close Arduino Serial Monitor and other serial programs.\n";
+}
+?></pre>
+<a href="index.php">Back to LED Controller</a>
+</div>
+</body>
+</html>
+</file>
+
+<file path="config.php">
+<?php
+define('ARDUINO_PORT', 'COM3');
+define('ARDUINO_BAUD', 9600);
+
+function configureArduinoSerial(): array
+{
+    $port = strtoupper(trim(ARDUINO_PORT));
+
+    if (!preg_match('/^COM([1-9][0-9]*)$/', $port)) {
+        return [
+            'success' => false,
+            'message' => "Invalid COM port: $port"
+        ];
+    }
+
+    // Windows MODE command. Do not use escapeshellarg() here.
+    $command = 'mode ' . $port .
+               ' BAUD=' . (int) ARDUINO_BAUD .
+               ' PARITY=N DATA=8 STOP=1 XON=OFF';
+
+    $output = [];
+    $exitCode = 0;
+
+    exec($command . ' 2>&1', $output, $exitCode);
+
+    if ($exitCode !== 0) {
+        $details = trim(implode(' ', $output));
+
+        return [
+            'success' => false,
+            'message' => "Windows could not configure $port." .
+                         ($details !== '' ? " Windows says: $details" : '')
+        ];
+    }
+
+    return [
+        'success' => true,
+        'message' => 'Serial port configured.'
+    ];
+}
+
+function sendArduinoCommand(string $command): array
+{
+    if (!in_array($command, ['0', '1'], true)) {
+        return [
+            'success' => false,
+            'message' => 'Invalid Arduino command.'
+        ];
+    }
+
+    $configured = configureArduinoSerial();
+
+    if (!$configured['success']) {
+        return $configured;
+    }
+
+    $port = strtoupper(trim(ARDUINO_PORT));
+
+    /*
+     * IMPORTANT:
+     * In a PHP single-quoted string, \\ represents one backslash.
+     * This creates the Windows device path:
+     *
+     *     \\.\COM6
+     */
+    $device = '\\\\.\\' . $port;
+
+    $handle = @fopen($device, 'w+b');
+
+    if ($handle === false) {
+        return [
+            'success' => false,
+            'message' => "PHP could not open $port. Close Arduino Serial Monitor and other serial programs."
+        ];
+    }
+
+    /*
+     * Opening the serial port can reset an Arduino Uno.
+     * Wait for the sketch to start before sending the command.
+     */
+    usleep(2500000);
+
+    $written = @fwrite($handle, $command);
+    fflush($handle);
+    usleep(100000);
+    fclose($handle);
+
+    if ($written === false || $written < 1) {
+        return [
+            'success' => false,
+            'message' => "PHP opened $port but could not write to it."
+        ];
+    }
+
+    return [
+        'success' => true,
+        'message' => $command === '1'
+            ? 'LED ON command sent successfully.'
+            : 'LED OFF command sent successfully.'
+    ];
+}
+?>
+</file>
+
+<file path="index.php">
+<?php
+session_start();
+require_once __DIR__ . '/config.php';
+
+define('STATE_FILE', __DIR__ . '/led_state.txt');
+
+function getLedState(): string
+{
+    // If Apache was restarted after the last saved state, treat it as stale -> OFF
+    $pidFile = dirname($_SERVER['DOCUMENT_ROOT']) . '/apache/logs/httpd.pid';
+    if (is_file(STATE_FILE) && is_file($pidFile) && filemtime($pidFile) > filemtime(STATE_FILE)) {
+        file_put_contents(STATE_FILE, 'OFF', LOCK_EX);
+        return 'OFF';
+    }
+
+    if (is_file(STATE_FILE) && trim((string) file_get_contents(STATE_FILE)) === 'ON') {
+        return 'ON';
+    }
+    return 'OFF'; // default matches the sketch (LED starts LOW)
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $newState = getLedState() === 'ON' ? 'OFF' : 'ON';
+    $result = sendArduinoCommand($newState === 'ON' ? '1' : '0');
+
+    if ($result['success']) {
+        file_put_contents(STATE_FILE, $newState, LOCK_EX);
+    }
+
+    $_SESSION['flash'] = [
+        'message' => $result['message'],
+        'type'    => $result['success'] ? 'success' : 'error',
+    ];
+
+    header('Location: ' . $_SERVER['PHP_SELF']);
+    exit;
+}
+
+$flash = $_SESSION['flash'] ?? null;
+unset($_SESSION['flash']);
+
+$state = getLedState();
+$isOn  = $state === 'ON';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arduino LED Controller</title>
+<style>
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f1f5f9;font-family:Arial,sans-serif}
+.card{width:420px;max-width:92%;background:#fff;padding:35px;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.12);text-align:center}
+h1{color:#1f2937;margin-bottom:8px}.subtitle{color:#64748b}
+.port{display:inline-block;padding:8px 14px;border-radius:20px;background:#eef2ff;color:#3730a3;margin:20px}
+.toggle{border:0;border-radius:14px;padding:22px 0;width:100%;color:#fff;font-size:20px;font-weight:bold;cursor:pointer;transition:background .2s,transform .1s}
+.toggle:active{transform:scale(.98)}
+.toggle:disabled{opacity:.7;cursor:wait}
+.toggle.on{background:#16a34a}
+.toggle.off{background:#dc2626}
+.toggle small{display:block;margin-top:6px;font-size:12px;font-weight:normal;opacity:.9}
+.message{margin-top:22px;padding:13px;border-radius:9px;font-weight:bold}
+.success{background:#dcfce7;color:#166534}.error{background:#fee2e2;color:#991b1b}
+.note{font-size:12px;color:#64748b;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Arduino LED Controller</h1>
+<div class="subtitle">Local PC → USB Serial → Arduino</div>
+<div class="port">Arduino Port: <?php echo htmlspecialchars(ARDUINO_PORT); ?></div>
+
+<form method="post" id="toggleForm">
+<button class="toggle <?php echo $isOn ? 'on' : 'off'; ?>" type="submit" id="toggleBtn">
+LED <?php echo $state; ?>
+<small>Click to turn <?php echo $isOn ? 'OFF' : 'ON'; ?></small>
+</button>
+</form>
+
+<?php if ($flash): ?>
+<div class="message <?php echo htmlspecialchars($flash['type']); ?>">
+<?php echo htmlspecialchars($flash['message']); ?>
+</div>
+<?php endif; ?>
+
+<div class="note">Close Arduino Serial Monitor before using this page.</div>
+</div>
+
+<script>
+document.getElementById('toggleForm').addEventListener('submit', function () {
+  var btn = document.getElementById('toggleBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+});
+</script>
+</body>
+</html>
+</file>
+
+</files>
