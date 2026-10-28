@@ -565,4 +565,3 @@ $isOn = $state === 'ON';
 </script>
 </body>
 </html>
-```
