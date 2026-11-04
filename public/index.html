@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f7fb">
+    <title>Arduino LED Controller</title>
+
+    <style>
+        :root {
+            --bg: #f4f7fb;
+            --surface: #ffffff;
+            --text: #142238;
+            --muted: #64748b;
+            --border: #e6edf5;
+            --blue: #2563eb;
+            --green: #16a34a;
+            --red: #dc2626;
+            --radius: 24px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: 32px 18px;
+            display: grid;
+            place-items: center;
+            background:
+                radial-gradient(circle at 50% 0%, #e5edff 0, transparent 45%),
+                var(--bg);
+            color: var(--text);
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        button { font: inherit; }
+
+        .dashboard {
+            width: 100%;
+            max-width: 540px;
+            padding: 36px;
+            background: var(--surface);
+            border: 1px solid rgba(226, 232, 240, .9);
+            border-radius: var(--radius);
+            box-shadow: 0 24px 70px rgba(30, 64, 110, .09), 0 3px 10px rgba(30, 64, 110, .03);
+        }
+
+        .header { text-align: center; }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(25px, 5vw, 32px);
+            letter-spacing: -1.1px;
+            font-weight: 750;
+        }
+
+        .subtitle {
+            margin: 10px 0 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .divider { height: 1px; margin: 28px 0; background: var(--border); }
+
+        .badges {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 9px;
+            margin-bottom: 30px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            border: 1px solid #dbeafe;
+            border-radius: 999px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 13px;
+            font-weight: 650;
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #94a3b8;
+        }
+
+        .badge.online { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+        .badge.online .dot { background: var(--green); }
+        .badge.offline { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+        .badge.offline .dot { background: var(--red); }
+
+        .device {
+            padding: 28px 20px 26px;
+            text-align: center;
+            background: #f8fafc;
+            border: 1px solid #edf2f7;
+            border-radius: 20px;
+        }
+
+        .led-halo {
+            width: 112px;
+            height: 112px;
+            display: grid;
+            place-items: center;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            transition: background .25s ease;
+        }
+        .led-halo.on { background: rgba(34, 197, 94, .09); }
+        .led-halo.off { background: rgba(239, 68, 68, .07); }
+
+        .led {
+            position: relative;
+            width: 48px;
+            height: 62px;
+            border: 3px solid #b91c1c;
+            border-radius: 23px 23px 12px 12px;
+            background: linear-gradient(145deg, #fca5a5, #ef4444 65%, #dc2626);
+            box-shadow: 0 0 25px rgba(239, 68, 68, .22);
+            transition: all .25s ease;
+        }
+        .led::before {
+            content: "";
+            position: absolute;
+            top: 9px; left: 8px;
+            width: 9px; height: 20px;
+            border-radius: 99px;
+            background: rgba(255, 255, 255, .65);
+            transform: rotate(28deg);
+        }
+        .led::after {
+            content: "";
+            position: absolute;
+            left: 9px; bottom: -17px;
+            width: 24px; height: 12px;
+            border-left: 4px solid #64748b;
+            border-right: 4px solid #64748b;
+        }
+        .led.on {
+            border-color: #15803d;
+            background: linear-gradient(145deg, #bbf7d0, #4ade80 65%, #16a34a);
+            box-shadow: 0 0 20px rgba(34, 197, 94, .45), 0 0 48px rgba(34, 197, 94, .2);
+        }
+
+        .status-label {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+            font-size: 25px;
+            font-weight: 800;
+            letter-spacing: -.7px;
+        }
+        .status-label .state { color: var(--red); }
+        .status-label .state.on { color: var(--green); }
+
+        .status-description { margin: 9px 0 0; color: var(--muted); font-size: 14px; }
+
+        .toggle {
+            width: 100%;
+            min-height: 62px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-top: 20px;
+            padding: 16px 20px;
+            border: 0;
+            border-radius: 15px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 750;
+            cursor: pointer;
+            background: #94a3b8;
+            box-shadow: 0 6px 15px rgba(15, 23, 42, .10);
+            transition: transform .15s ease, box-shadow .15s ease, background .2s ease;
+        }
+        .toggle.on { background: #15803d; }
+        .toggle.off { background: #dc2626; }
+        .toggle:hover:not(:disabled) { box-shadow: 0 9px 20px rgba(15, 23, 42, .16); transform: translateY(-1px); }
+        .toggle:active:not(:disabled) { transform: scale(.99); }
+        .toggle:focus-visible { outline: 3px solid #93c5fd; outline-offset: 4px; }
+        .toggle:disabled { opacity: .7; cursor: wait; }
+        .toggle svg { width: 21px; height: 21px; flex-shrink: 0; }
+
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #fecaca;
+            border-radius: 14px;
+            color: #991b1b;
+            background: #fef2f2;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-wrap: anywhere;
+        }
+        .message[hidden] { display: none; }
+
+        .footer {
+            margin-top: 26px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 18px 12px; }
+            .dashboard { padding: 24px 18px; border-radius: 20px; }
+            .divider { margin: 22px 0; }
+            .device { padding: 24px 12px; }
+            .status-label { font-size: 23px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { transition-duration: .01ms !important; }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="dashboard">
+        <header class="header">
+            <h1>Arduino LED Controller</h1>
+            <p class="subtitle">Control your hardware from anywhere, right from your browser.</p>
+        </header>
+
+        <div class="divider"></div>
+
+        <div class="badges">
+            <span class="badge" id="dbBadge"><span class="dot"></span><span>Connecting...</span></span>
+            <span class="badge" id="bridgeBadge"><span class="dot"></span><span>Bridge: checking...</span></span>
+        </div>
+
+        <section class="device" aria-label="LED device status">
+            <div class="led-halo off" id="halo">
+                <div class="led off" id="led" role="img" aria-label="LED not illuminated"></div>
+            </div>
+
+            <h2 class="status-label">
+                LED <span class="state" id="stateText">--</span>
+            </h2>
+            <p class="status-description" id="stateDesc">Waiting for the database...</p>
+        </section>
+
+        <button class="toggle" type="button" id="toggleBtn" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 2v10"/>
+                <path d="M5.6 5.6a9 9 0 1 0 12.8 0"/>
+            </svg>
+            <span id="toggleLabel">Loading...</span>
+        </button>
+
+        <div class="message" id="errorBox" role="alert" hidden></div>
+
+        <footer class="footer">
+            Browser &rarr; Firebase Realtime Database &rarr; Bridge (PC) &rarr; USB &rarr; Arduino
+        </footer>
+    </main>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCnpeSpecG26Ziw4ZrTM1Gdt32cqDtIfhs",
+        authDomain: "arduino-led-controller-730f6.firebaseapp.com",
+        databaseURL: "https://arduino-led-controller-730f6-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "arduino-led-controller-730f6",
+        storageBucket: "arduino-led-controller-730f6.firebasestorage.app",
+        messagingSenderId: "787173868223",
+        appId: "1:787173868223:web:160a40d1b598dffefa3c0a"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const ledRef = ref(db, "led");
+
+    const $ = (id) => document.getElementById(id);
+    let currentState = null;      // "ON" | "OFF" | null (not loaded yet)
+    let lastHeartbeat = 0;        // ms timestamp written by bridge.py
+    const BRIDGE_TIMEOUT_MS = 15000;
+
+    function showError(text) {
+        const box = $("errorBox");
+        box.textContent = text;
+        box.hidden = !text;
+    }
+
+    function render() {
+        const isOn = currentState === "ON";
+        const loaded = currentState !== null;
+
+        $("halo").className = "led-halo " + (isOn ? "on" : "off");
+        $("led").className = "led " + (isOn ? "on" : "off");
+        $("led").setAttribute("aria-label", isOn ? "LED illuminated" : "LED not illuminated");
+
+        $("stateText").textContent = loaded ? currentState : "--";
+        $("stateText").className = "state" + (isOn ? " on" : "");
+        $("stateDesc").textContent = loaded
+            ? (isOn ? "Your LED is currently on." : "Your LED is currently off.")
+            : "Waiting for the database...";
+
+        const btn = $("toggleBtn");
+        btn.disabled = !loaded;
+        btn.className = "toggle" + (loaded ? (isOn ? " on" : " off") : "");
+        $("toggleLabel").textContent = loaded ? (isOn ? "Turn OFF" : "Turn ON") : "Loading...";
+    }
+
+    function renderBridge() {
+        const online = Date.now() - lastHeartbeat < BRIDGE_TIMEOUT_MS;
+        const badge = $("bridgeBadge");
+        badge.className = "badge " + (online ? "online" : "offline");
+        badge.lastElementChild.textContent = online ? "Bridge: online" : "Bridge: offline";
+    }
+
+    // LED state (real-time, updates on every device at once)
+    onValue(ledRef, (snap) => {
+        currentState = snap.val() === "ON" ? "ON" : "OFF";
+        showError("");
+        render();
+    }, (err) => {
+        showError("Cannot read the database: " + err.message);
+    });
+
+    // Connection status to Firebase itself
+    onValue(ref(db, ".info/connected"), (snap) => {
+        const connected = snap.val() === true;
+        const badge = $("dbBadge");
+        badge.className = "badge " + (connected ? "online" : "offline");
+        badge.lastElementChild.textContent = connected ? "Firebase: connected" : "Firebase: offline";
+    });
+
+    // Heartbeat written by the PC bridge so we know if the Arduino is reachable
+    onValue(ref(db, "bridge/heartbeat"), (snap) => {
+        lastHeartbeat = Number(snap.val()) || 0;
+        renderBridge();
+    });
+    setInterval(renderBridge, 3000);
+
+    // Toggle: write the opposite of the current state
+    $("toggleBtn").addEventListener("click", async () => {
+        if (currentState === null) return;
+        const next = currentState === "ON" ? "OFF" : "ON";
+        try {
+            await set(ledRef, next);
+        } catch (err) {
+            showError("Cannot write to the database: " + err.message);
+        }
+    });
+
+    render();
+    renderBridge();
+</script>
+</body>
+</html>

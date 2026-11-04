@@ -1,0 +1,7 @@
+{
+  "hosting": {
+    "site": "arduino-led-controller-730f6",
+    "public": "public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+  }
+}
