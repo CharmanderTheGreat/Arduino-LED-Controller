@@ -110,11 +110,7 @@ arduino-led-controller/
 ├── firebase.json                        ← Firebase Hosting configuration
 ├── .gitignore                           ← keeps secrets out of Git
 ├── README.md                            ← this file
-├── SETUP.md                             ← step-by-step setup guide
-└── legacy-php/                          ← (optional) the original PHP version
-    ├── index.php
-    ├── config.php
-    └── test_com_port.php
+└── SETUP.md                             ← step-by-step setup guide
 ```
 
 > `serviceAccountKey.json` is required by `bridge.py` but **must never be committed to GitHub**. It is listed in `.gitignore`.
